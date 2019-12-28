@@ -300,13 +300,6 @@ def finish_orig(message):
         del player_part[player_id]
 
 
-@server.route("/")
-def webhook():
-    bot.remove_webhook()
-    bot.set_webhook(url='https://test-new-new.herokuapp.com/' + tokenBot.TOKEN)
-    return "!", 200
-
-
 if __name__ == '__main__':
     app.debug = True
     app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
