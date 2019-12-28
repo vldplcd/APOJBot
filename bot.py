@@ -15,35 +15,11 @@ app = Flask(__name__)
 BASE_DIR = os.path.dirname(app.instance_path)
 secret = "971010"
 
-apihelper.proxy = {'https':'http://voland.jos@gmail.com:josyka1994vpn@fi-esp.pvdata.host:8080'}
+#apihelper.proxy = {'https':'http://voland.jos@gmail.com:josyka1994vpn@fi-esp.pvdata.host:8080'}
 API_TOKEN = "1056456602:AAGdeyzA92S98aO3PrJLF0DS-xlG4nkwWAU"
 bot = telebot.TeleBot(API_TOKEN)
 request_kwargs = {'proxy_url': 'socks5h://fi-esp.pvdata.host:1080/',
                   'urllib3_proxy_kwargs': {'username': 'voland.jos@gmail.com', 'password': 'josyka1994vpn'}}
-
-
-@app.route('/', methods=['GET', 'HEAD'])
-def webhook():
-    bot.remove_webhook()
-    bot.set_webhook(url='https://sheltered-meadow-12656.herokuapp.com/' + API_TOKEN)
-    return "!", 200
-
-@app.route('/' + API_TOKEN, methods=['POST'])
-def getMessage():
-    bot.process_new_updates([telebot.types.Update.de_json(flask.request.stream.read().decode("utf-8"))])
-    return "!", 200
-
-# Process webhook calls
-@app.route("/{}".format(secret), methods=['POST'])
-def webhook_old():
-    if flask.request.headers.get('content-type') == 'application/json':
-        json_string = flask.request.get_data().decode('utf-8')
-        update = telebot.types.Update.de_json(json_string)
-        print(update)
-        bot.process_new_updates([update])
-        return ''
-    else:
-        flask.abort(403)
 
 
 keyboard_room = telebot.types.ReplyKeyboardMarkup(True, True)
@@ -186,8 +162,7 @@ def handle_voice(message):
     if message.chat.id not in room_owners and message.chat.id in player_part:
         part = player_part[message.chat.id]
         file_info = bot.get_file(message.voice.file_id)
-        file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path),
-                            proxies=apihelper.proxy)
+        file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
         rn = room_players[message.chat.id]
         fp = 'voices/{}_player{}.ogg'.format(rn, part)
         open(fp, 'wb').write(file.content)
@@ -201,8 +176,7 @@ def handle_voice(message):
 
     elif rooms[room_owners[message.chat.id]]['audio']['init'] == '':
         file_info = bot.get_file(message.voice.file_id)
-        file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path),
-                            proxies=apihelper.proxy)
+        file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
         rn = room_owners[message.chat.id]
         fp = 'voices/{}_init.ogg'.format(rn)
         open(fp, 'wb').write(file.content)
@@ -298,6 +272,19 @@ def finish_orig(message):
         del room_owners[message.chat.id]
         del room_players[player_id]
         del player_part[player_id]
+
+
+@app.route('/', methods=['GET', 'HEAD'])
+def webhook():
+    bot.remove_webhook()
+    bot.set_webhook(url='https://sheltered-meadow-12656.herokuapp.com/' + API_TOKEN)
+    return "!", 200
+
+
+@app.route('/' + secret, methods=['POST'])
+def getMessage():
+    bot.process_new_updates([telebot.types.Update.de_json(flask.request.stream.read().decode("utf-8"))])
+    return "!", 200
 
 
 if __name__ == '__main__':
