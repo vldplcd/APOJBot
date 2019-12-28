@@ -1,6 +1,6 @@
 import os, flask
 from flask import Flask
-import telebot, logging, random, requests
+import telebot, logging, random, requests, boto3
 from pydub import AudioSegment
 
 logger = telebot.logger
@@ -8,6 +8,10 @@ telebot.logger.setLevel(logging.DEBUG)
 
 app = Flask(__name__)
 BASE_DIR = os.path.dirname(app.instance_path)
+
+S3_BUCKET = os.environ.get('S3_BUCKET')
+s3 = boto3.client('s3')
+
 secret = "971010"
 
 # apihelper.proxy = {'https':'http://voland.jos@gmail.com:josyka1994vpn@fi-esp.pvdata.host:8080'}
@@ -42,7 +46,7 @@ def reverse_voice(file_path, room_num):
     rev_pts = []
     for i in range(0, pt+1):
         ogg_rev[i*int(dur/pt):(i + 1) * int(dur/pt)].export('voices/{}_rev{}.mp3'.format(room_num, i+1), format='mp3')
-        rev_pts.append('voices/{}_rev{}.mp3'.format(room_num, i+1))
+        rev_pts.append('{}_rev{}.mp3'.format(room_num, i+1))
     return rev_pts
 
 
@@ -173,8 +177,9 @@ def handle_voice(message):
             file_info = bot.get_file(message.voice.file_id)
             file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
             rn = room_players[message.chat.id]
-            fp = 'voices/{}_player{}.ogg'.format(rn, part)
-            open(fp, 'wb').write(file.content)
+            fp = '{}_player{}.ogg'.format(rn, part)
+            #open(fp, 'wb').write(file.content)
+            resp = s3.upload_fileobj(file.content, S3_BUCKET, fp)
             keyboard_pappr_init = telebot.types.ReplyKeyboardMarkup(True, True)
             keyboard_pappr_init.row('Продолжить')
             bot.send_message(message.chat.id, 'Фантастика! Подтвердите запись или перезапишите её',
@@ -187,11 +192,12 @@ def handle_voice(message):
             file_info = bot.get_file(message.voice.file_id)
             file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
             rn = room_owners[message.chat.id]
-            fp = 'voices/{}_init.ogg'.format(rn)
-            open(fp, 'wb').write(file.content)
+            fp = '{}_init.ogg'.format(rn)
+            #open(fp, 'wb').write(file.content)
+            resp = s3.upload_fileobj(file.content, S3_BUCKET, fp)
             rev_pts = reverse_voice(fp, rn)
-            rev_voice = open('voices/{}_rev.mp3'.format(rn), 'rb')
-            rooms[rn]['audio']['rev_full'] = 'voices/{}_rev.mp3'.format(rn)
+            rev_voice = open('{}_rev.mp3'.format(rn), 'rb')
+            rooms[rn]['audio']['rev_full'] = '{}_rev.mp3'.format(rn)
             rooms[rn]['audio']['rev_pts'] = rev_pts
             bot.send_audio(message.chat.id, rev_voice)
             bot.send_message(message.chat.id, 'Отправьте запись игрокам или перезапишите её',
