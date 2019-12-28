@@ -194,7 +194,10 @@ def handle_voice(message):
             rn = room_owners[message.chat.id]
             fp = '{}_init.ogg'.format(rn)
             print(file.content)
-            with io.BytesIO(file.content) as f:
+            with io.BytesIO as f:
+                for chunk in file.iter_content(chunk_size=4096):
+                    f.write(chunk)
+                f.seek(0)
                 resp = s3.upload_fileobj(f, S3_BUCKET, fp)
             #rev_pts = reverse_voice(fp, rn)
             #rev_voice = open('{}_rev.mp3'.format(rn), 'rb')
