@@ -193,6 +193,7 @@ def handle_voice(message):
             file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
             rn = room_owners[message.chat.id]
             fp = '{}_init.ogg'.format(rn)
+            print(file.content)
             with io.BytesIO(file.content) as f:
                 resp = s3.upload_fileobj(f, S3_BUCKET, fp)
             #rev_pts = reverse_voice(fp, rn)
@@ -203,7 +204,7 @@ def handle_voice(message):
             bot.send_message(message.chat.id, 'Отправьте запись игрокам или перезапишите её',
                              reply_markup=keyboard_appr)
     except Exception as e:
-        print(e)
+        print(str(e))
         bot.send_message(message.chat.id, "Произошла ошибка. Советуем начать новую игру - /newgame)" + str(e))
 
 
