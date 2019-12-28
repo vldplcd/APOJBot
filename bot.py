@@ -195,11 +195,11 @@ def handle_voice(message):
             fp = '{}_init.ogg'.format(rn)
             with io.BytesIO(file.content) as f:
                 resp = s3.upload_fileobj(f, S3_BUCKET, fp)
-            rev_pts = reverse_voice(fp, rn)
-            rev_voice = open('{}_rev.mp3'.format(rn), 'rb')
-            rooms[rn]['audio']['rev_full'] = '{}_rev.mp3'.format(rn)
-            rooms[rn]['audio']['rev_pts'] = rev_pts
-            bot.send_audio(message.chat.id, rev_voice)
+            #rev_pts = reverse_voice(fp, rn)
+            #rev_voice = open('{}_rev.mp3'.format(rn), 'rb')
+            #rooms[rn]['audio']['rev_full'] = '{}_rev.mp3'.format(rn)
+            #rooms[rn]['audio']['rev_pts'] = rev_pts
+            #bot.send_audio(message.chat.id, rev_voice)
             bot.send_message(message.chat.id, 'Отправьте запись игрокам или перезапишите её',
                              reply_markup=keyboard_appr)
     except Exception as e:
