@@ -204,7 +204,7 @@ def handle_voice(message):
                              reply_markup=keyboard_appr)
     except Exception as e:
         print(e)
-        bot.send_message(message.chat.id, "Произошла ошибка. Советуем начать новую игру - /newgame)")
+        bot.send_message(message.chat.id, "Произошла ошибка. Советуем начать новую игру - /newgame)" + str(e))
 
 
 @bot.message_handler(func=lambda message: message.text in ['Отправить'], content_types=['text'])
