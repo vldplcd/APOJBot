@@ -25,7 +25,7 @@ request_kwargs = {'proxy_url': 'socks5h://fi-esp.pvdata.host:1080/',
 @app.route('/', methods=['GET', 'HEAD'])
 def webhook():
     bot.remove_webhook()
-    bot.set_webhook(url='https://test-new-new.herokuapp.com/' + API_TOKEN)
+    bot.set_webhook(url='https://sheltered-meadow-12656.herokuapp.com/' + API_TOKEN)
     return "!", 200
 
 
