@@ -2,6 +2,7 @@ import os, flask, io
 from flask import Flask
 import telebot, logging, random, requests, boto3
 from pydub import AudioSegment
+from datetime import datetime, timedelta
 
 logger = telebot.logger
 telebot.logger.setLevel(logging.DEBUG)
@@ -35,6 +36,11 @@ room_seekers = []
 player_part = {}
 
 
+def expires_date(mnts):
+    expires = datetime.utcnow() + timedelta(minutes=mnts)
+    return expires.strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+
 def reverse_voice(file_path, room_num):
     print(file_path)
     f = io.BytesIO()
@@ -47,7 +53,7 @@ def reverse_voice(file_path, room_num):
     f_rev = io.BytesIO()
     ogg_rev.export(f_rev, format='mp3')
     f_rev.seek(0)
-    s3.upload_fileobj(f_rev, S3_BUCKET, '{}_rev.mp3'.format(room_num), {'Expires': 1800})
+    s3.upload_fileobj(f_rev, S3_BUCKET, '{}_rev.mp3'.format(room_num), {'Expires': expires_date(30)})
 
     dur = len(ogg_rev)
     pt = int(dur/3500)+1
@@ -56,7 +62,7 @@ def reverse_voice(file_path, room_num):
         f_rev_pt = io.BytesIO()
         ogg_rev[i*int(dur/pt):(i + 1) * int(dur/pt)].export(f_rev_pt, format='mp3')
         f_rev_pt.seek(0)
-        s3.upload_fileobj(f_rev_pt, S3_BUCKET, '{}_rev{}.mp3'.format(room_num, i+1), {'Expires': 1800})
+        s3.upload_fileobj(f_rev_pt, S3_BUCKET, '{}_rev{}.mp3'.format(room_num, i+1), {'Expires': expires_date(30)})
         rev_pts.append('{}_rev{}.mp3'.format(room_num, i+1))
     return rev_pts
 
@@ -185,58 +191,59 @@ def room_connecting(message):
 
 @bot.message_handler(content_types=['voice'])
 def handle_voice(message):
+    try:
+        if message.chat.id not in room_owners and message.chat.id in player_part:
+            part = player_part[message.chat.id]
+            file_info = bot.get_file(message.voice.file_id)
+            file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path),
+                                proxies=telebot.apihelper.proxy)
+            rn = room_players[message.chat.id]
+            fp = '{}_init.ogg'.format(rn)
+            f = io.BytesIO()
+            for chunk in file.iter_content(chunk_size=4096):
+                f.write(chunk)
+            f.seek(0)
+            resp = s3.upload_fileobj(f, S3_BUCKET, fp, {'Expires': expires_date(30)})
+            keyboard_pappr_init = telebot.types.ReplyKeyboardMarkup(True, True)
+            keyboard_pappr_init.row('Продолжить')
+            bot.send_message(message.chat.id, 'Фантастика! Подтвердите запись или перезапишите её',
+                                reply_markup=keyboard_pappr_init)
 
-    if message.chat.id not in room_owners and message.chat.id in player_part:
-        part = player_part[message.chat.id]
-        file_info = bot.get_file(message.voice.file_id)
-        file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path),
-                            proxies=telebot.apihelper.proxy)
-        rn = room_players[message.chat.id]
-        fp = '{}_init.ogg'.format(rn)
-        f = io.BytesIO()
-        for chunk in file.iter_content(chunk_size=4096):
-            f.write(chunk)
-        f.seek(0)
-        resp = s3.upload_fileobj(f, S3_BUCKET, fp, {'Expires': 1800})
-        keyboard_pappr_init = telebot.types.ReplyKeyboardMarkup(True, True)
-        keyboard_pappr_init.row('Продолжить')
-        bot.send_message(message.chat.id, 'Фантастика! Подтвердите запись или перезапишите её',
-                            reply_markup=keyboard_pappr_init)
+            owner_id = rooms[rn]['owner']
+            bot.send_message(owner_id, 'Игрок записал {} часть(-ей)'.format(part))
 
-        owner_id = rooms[rn]['owner']
-        bot.send_message(owner_id, 'Игрок записал {} часть(-ей)'.format(part))
+        elif rooms[room_owners[message.chat.id]]['audio']['init'] == '':
+            file_info = bot.get_file(message.voice.file_id)
+            file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path),
+                                proxies=telebot.apihelper.proxy)
+            rn = room_owners[message.chat.id]
+            fp = '{}_init.ogg'.format(rn)
+            f = io.BytesIO()
+            for chunk in file.iter_content(chunk_size=4096):
+                f.write(chunk)
+            f.seek(0)
+            resp = s3.upload_fileobj(f, S3_BUCKET, fp, {'Expires': expires_date(30)})
+            rev_pts = reverse_voice(fp, rn)
 
-    elif rooms[room_owners[message.chat.id]]['audio']['init'] == '':
-        file_info = bot.get_file(message.voice.file_id)
-        file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path),
-                            proxies=telebot.apihelper.proxy)
-        rn = room_owners[message.chat.id]
-        fp = '{}_init.ogg'.format(rn)
-        f = io.BytesIO()
-        for chunk in file.iter_content(chunk_size=4096):
-            f.write(chunk)
-        f.seek(0)
-        resp = s3.upload_fileobj(f, S3_BUCKET, fp, {'Expires': 1800})
-        rev_pts = reverse_voice(fp, rn)
+            rev_voice = io.BytesIO()
+            s3.download_fileobj(S3_BUCKET, '{}_rev.mp3'.format(rn), rev_voice)
+            rev_voice.seek(0)
 
-        rev_voice = io.BytesIO()
-        s3.download_fileobj(S3_BUCKET, '{}_rev.mp3'.format(rn), rev_voice)
-        rev_voice.seek(0)
-
-        rooms[rn]['audio']['rev_full'] = '{}_rev.mp3'.format(rn)
-        rooms[rn]['audio']['rev_pts'] = rev_pts
-        bot.send_audio(message.chat.id, rev_voice, performer='AJOP', title='Game {} Reversed'.format(rn))
-        bot.send_message(message.chat.id, 'Отправьте запись игрокам или перезапишите её',
-                         reply_markup=keyboard_appr)
-    #except Exception as e:
-    #    print(str(e))
-    #    bot.send_message(message.chat.id, "Произошла ошибка. Советуем начать новую игру - /newgame)" + str(e))
+            rooms[rn]['audio']['rev_full'] = '{}_rev.mp3'.format(rn)
+            rooms[rn]['audio']['rev_pts'] = rev_pts
+            bot.send_audio(message.chat.id, rev_voice, performer='AJOP', title='Game {} Reversed'.format(rn))
+            bot.send_message(message.chat.id, 'Отправьте запись игрокам или перезапишите её',
+                             reply_markup=keyboard_appr)
+    except Exception as e:
+        print(str(e))
+        bot.send_message(message.chat.id, "Произошла ошибка. Советуем начать новую игру - /newgame)" + str(e))
 
 
 @bot.message_handler(func=lambda message: message.text in ['Отправить'], content_types=['text'])
 def approve_voice(message):
     try:
         print(message.text)
+        print(room_owners)
         if message.text == 'Отправить' and message.chat.id in room_owners:
             rn = room_owners[message.chat.id]
             fp = '{}_init.ogg'.format(rn)
