@@ -28,6 +28,10 @@ def webhook():
     bot.set_webhook(url='https://sheltered-meadow-12656.herokuapp.com/' + API_TOKEN)
     return "!", 200
 
+@app.route('/' + API_TOKEN, methods=['POST'])
+def getMessage():
+    bot.process_new_updates([telebot.types.Update.de_json(flask.request.stream.read().decode("utf-8"))])
+    return "!", 200
 
 # Process webhook calls
 @app.route("/{}".format(secret), methods=['POST'])
@@ -304,5 +308,5 @@ def webhook():
 
 
 if __name__ == '__main__':
-    server.debug = True
-    server.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
+    app.debug = True
+    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
