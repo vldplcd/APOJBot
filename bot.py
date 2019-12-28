@@ -179,7 +179,7 @@ def handle_voice(message):
             rn = room_players[message.chat.id]
             fp = '{}_player{}.ogg'.format(rn, part)
             #open(fp, 'wb').write(file.content)
-            resp = s3.upload_fileobj(file.content, S3_BUCKET, fp)
+            resp = s3.upload_fileobj(file, S3_BUCKET, fp)
             keyboard_pappr_init = telebot.types.ReplyKeyboardMarkup(True, True)
             keyboard_pappr_init.row('Продолжить')
             bot.send_message(message.chat.id, 'Фантастика! Подтвердите запись или перезапишите её',
@@ -194,7 +194,7 @@ def handle_voice(message):
             rn = room_owners[message.chat.id]
             fp = '{}_init.ogg'.format(rn)
             #open(fp, 'wb').write(file.content)
-            resp = s3.upload_fileobj(file.content, S3_BUCKET, fp)
+            resp = s3.upload_fileobj(file, S3_BUCKET, fp)
             rev_pts = reverse_voice(fp, rn)
             rev_voice = open('{}_rev.mp3'.format(rn), 'rb')
             rooms[rn]['audio']['rev_full'] = '{}_rev.mp3'.format(rn)
