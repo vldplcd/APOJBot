@@ -1,4 +1,4 @@
-import os, flask
+import os, flask, io
 from flask import Flask
 import telebot, logging, random, requests, boto3
 from pydub import AudioSegment
@@ -193,8 +193,8 @@ def handle_voice(message):
             file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
             rn = room_owners[message.chat.id]
             fp = '{}_init.ogg'.format(rn)
-            print(file.content)
-            resp = s3.upload_fileobj(file, S3_BUCKET, fp)
+            with io.BytesIO(file.content):
+                resp = s3.upload_fileobj(file, S3_BUCKET, fp)
             rev_pts = reverse_voice(fp, rn)
             rev_voice = open('{}_rev.mp3'.format(rn), 'rb')
             rooms[rn]['audio']['rev_full'] = '{}_rev.mp3'.format(rn)
