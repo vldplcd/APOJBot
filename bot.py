@@ -12,7 +12,6 @@ BASE_DIR = os.path.dirname(app.instance_path)
 S3_BUCKET = os.environ.get('S3_BUCKET')
 s3 = boto3.client('s3')
 
-
 secret = "971010"
 
 telebot.apihelper.proxy = {'https':'http://voland.jos@gmail.com:josyka1994vpn@fi-esp.pvdata.host:8080'}
