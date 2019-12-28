@@ -1,3 +1,6 @@
+import os
+import flask
+from flask import Flask
 import telebot
 from telebot import apihelper
 import logging
@@ -8,11 +11,35 @@ from pydub import AudioSegment
 logger = telebot.logger
 telebot.logger.setLevel(logging.DEBUG)
 
+app = Flask(__name__)
+BASE_DIR = os.path.dirname(app.instance_path)
+secret = "971010"
+
 apihelper.proxy = {'https':'http://voland.jos@gmail.com:josyka1994vpn@fi-esp.pvdata.host:8080'}
 API_TOKEN = "1056456602:AAGdeyzA92S98aO3PrJLF0DS-xlG4nkwWAU"
 bot = telebot.TeleBot(API_TOKEN)
 request_kwargs = {'proxy_url': 'socks5h://fi-esp.pvdata.host:1080/',
                   'urllib3_proxy_kwargs': {'username': 'voland.jos@gmail.com', 'password': 'josyka1994vpn'}}
+
+
+@app.route('/', methods=['GET', 'HEAD'])
+def webhook():
+    bot.remove_webhook()
+    bot.set_webhook(url='https://test-new-new.herokuapp.com/' + API_TOKEN)
+    return "!", 200
+
+
+# Process webhook calls
+@app.route("/{}".format(secret), methods=['POST'])
+def webhook_old():
+    if flask.request.headers.get('content-type') == 'application/json':
+        json_string = flask.request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        print(update)
+        bot.process_new_updates([update])
+        return ''
+    else:
+        flask.abort(403)
 
 
 keyboard_room = telebot.types.ReplyKeyboardMarkup(True, True)
